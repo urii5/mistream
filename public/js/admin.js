@@ -291,14 +291,44 @@ socket.on('viewer:count', (count) => {
 
 // Cuando un viewer se conecta, el servidor notifica
 socket.on('viewer:new', (viewerPeerId) => {
-    if (localStream && peer) {
-        console.log('Llamando a viewer:', viewerPeerId);
+    console.log('Nuevo viewer detectado:', viewerPeerId);
+
+    if (!localStream) {
+        console.warn('No hay stream local para enviar');
+        return;
+    }
+
+    if (!peer || !peer.open) {
+        console.warn('PeerJS no está listo');
+        return;
+    }
+
+    console.log('Llamando a viewer:', viewerPeerId);
+    try {
         const call = peer.call(viewerPeerId, localStream);
-        activeCalls.push(call);
+
+        if (!call) {
+            console.error('No se pudo crear la llamada');
+            return;
+        }
+
+        call.on('stream', () => {
+            console.log('Conexión establecida con viewer:', viewerPeerId);
+        });
+
+        call.on('error', (err) => {
+            console.error('Error en llamada a viewer:', viewerPeerId, err);
+        });
 
         call.on('close', () => {
+            console.log('Llamada cerrada con viewer:', viewerPeerId);
             activeCalls = activeCalls.filter(c => c !== call);
         });
+
+        activeCalls.push(call);
+        console.log('Llamadas activas:', activeCalls.length);
+    } catch (err) {
+        console.error('Error al llamar viewer:', err);
     }
 });
 

@@ -19,6 +19,8 @@ const chatMessage = document.getElementById('chatMessage');
 // Estado
 let peer = null;
 let currentCall = null;
+let myPeerId = null;
+let streamIsLive = false;
 
 // Inicializar PeerJS
 function initPeer() {
@@ -28,6 +30,12 @@ function initPeer() {
 
     peer.on('open', (id) => {
         console.log('PeerJS conectado con ID:', id);
+        myPeerId = id;
+
+        // Si el stream ya está en vivo, notificar que estamos listos
+        if (streamIsLive) {
+            notifyReady();
+        }
     });
 
     peer.on('call', (call) => {
@@ -54,12 +62,21 @@ function initPeer() {
     });
 }
 
+// Notificar al servidor que estamos listos para recibir
+function notifyReady() {
+    if (myPeerId) {
+        console.log('Notificando que estamos listos con peerId:', myPeerId);
+        socket.emit('viewer:ready', { peerId: myPeerId });
+    }
+}
+
 // Manejar fin de stream
 function handleStreamEnd() {
     remoteVideo.srcObject = null;
     offlineScreen.classList.remove('hidden');
     liveBadge.classList.remove('active');
     currentCall = null;
+    streamIsLive = false;
 }
 
 // Socket Events
@@ -71,10 +88,11 @@ socket.on('connect', () => {
 
 socket.on('stream:started', (data) => {
     console.log('Stream iniciado:', data);
+    streamIsLive = true;
     liveBadge.classList.add('active');
 
-    // El admin llamará a los viewers, no necesitamos hacer nada aquí
-    // solo mostrar que está en vivo
+    // Notificar que estamos listos para recibir el stream
+    notifyReady();
 });
 
 socket.on('stream:stopped', () => {

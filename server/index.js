@@ -24,6 +24,7 @@ app.use(express.static(path.join(__dirname, '../public')));
 let streamState = {
   isLive: false,
   adminPeerId: null,
+  adminSocketId: null,
   viewerCount: 0,
   streamType: null // 'camera', 'screen', 'video'
 };
@@ -51,30 +52,32 @@ io.on('connection', (socket) => {
   socket.on('admin:start-stream', (data) => {
     streamState.isLive = true;
     streamState.adminPeerId = data.peerId;
+    streamState.adminSocketId = socket.id;
     streamState.streamType = data.type;
     socket.join('admin');
     io.emit('stream:started', {
       peerId: data.peerId,
       type: data.type
     });
-    console.log('Stream iniciado:', data.type);
+    console.log('Stream iniciado:', data.type, 'Admin PeerId:', data.peerId);
   });
 
   // Admin detiene stream
   socket.on('admin:stop-stream', () => {
     streamState.isLive = false;
     streamState.adminPeerId = null;
+    streamState.adminSocketId = null;
     streamState.streamType = null;
     io.emit('stream:stopped');
     console.log('Stream detenido');
   });
 
-  // Viewer se une
+  // Viewer se une (sin peerId aún)
   socket.on('viewer:join', () => {
     streamState.viewerCount++;
     socket.join('viewers');
     io.emit('viewer:count', streamState.viewerCount);
-    
+
     // Enviar estado actual al nuevo viewer
     if (streamState.isLive) {
       socket.emit('stream:started', {
@@ -83,6 +86,16 @@ io.on('connection', (socket) => {
       });
     }
     console.log('Viewer conectado. Total:', streamState.viewerCount);
+  });
+
+  // Viewer listo con su peerId - notificar al admin para que lo llame
+  socket.on('viewer:ready', (data) => {
+    console.log('Viewer listo con peerId:', data.peerId);
+    if (streamState.isLive && streamState.adminSocketId) {
+      // Notificar al admin para que llame a este viewer
+      io.to(streamState.adminSocketId).emit('viewer:new', data.peerId);
+      console.log('Notificando al admin sobre nuevo viewer:', data.peerId);
+    }
   });
 
   // Chat
