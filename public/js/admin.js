@@ -90,6 +90,11 @@ btnCamera.addEventListener('click', async () => {
         currentStreamType = 'camera';
         btnStartStream.disabled = false;
 
+        // Si ya estamos transmitiendo, actualizar el stream en viewers
+        if (isStreaming) {
+            updateActiveStreams();
+        }
+
         console.log('Cámara activada');
     } catch (err) {
         console.error('Error accediendo a cámara:', err);
@@ -128,6 +133,11 @@ btnScreen.addEventListener('click', async () => {
         screenStream.getVideoTracks()[0].onended = () => {
             stopStream();
         };
+
+        // Si ya estamos transmitiendo, actualizar el stream en viewers
+        if (isStreaming) {
+            updateActiveStreams();
+        }
 
         console.log('Pantalla compartida');
     } catch (err) {
@@ -196,6 +206,11 @@ videoFileInput.addEventListener('change', async (e) => {
         currentStreamType = 'video';
         btnStartStream.disabled = false;
 
+        // Si ya estamos transmitiendo, actualizar el stream en viewers
+        if (isStreaming) {
+            updateActiveStreams();
+        }
+
         console.log('Video MP4 cargado');
     };
 
@@ -220,6 +235,41 @@ function clearActiveButtons() {
     }
 }
 
+// Actualizar el stream en todas las llamadas activas (cuando se cambia de fuente durante transmisión)
+function updateActiveStreams() {
+    if (!localStream || activeCalls.length === 0) return;
+
+    console.log('Actualizando stream en', activeCalls.length, 'llamadas activas');
+
+    activeCalls.forEach(call => {
+        try {
+            // Obtener los senders de la conexión
+            const senders = call.peerConnection.getSenders();
+
+            // Reemplazar video track
+            const videoTrack = localStream.getVideoTracks()[0];
+            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+            if (videoSender && videoTrack) {
+                videoSender.replaceTrack(videoTrack);
+                console.log('Video track reemplazado');
+            }
+
+            // Reemplazar audio track si existe
+            const audioTrack = localStream.getAudioTracks()[0];
+            const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+            if (audioSender && audioTrack) {
+                audioSender.replaceTrack(audioTrack);
+                console.log('Audio track reemplazado');
+            }
+        } catch (err) {
+            console.error('Error actualizando stream en llamada:', err);
+        }
+    });
+}
+
+// Variable para saber si estamos transmitiendo
+let isStreaming = false;
+
 // =====================================================
 // Control de transmisión
 // =====================================================
@@ -239,6 +289,7 @@ btnStartStream.addEventListener('click', () => {
     streamStatus.textContent = '🟢 Transmitiendo';
     btnStartStream.style.display = 'none';
     btnStopStream.style.display = 'inline-flex';
+    isStreaming = true;
 
     console.log('Stream iniciado');
 });
@@ -248,6 +299,9 @@ btnStopStream.addEventListener('click', () => {
 });
 
 function stopStream() {
+    // Marcar que ya no estamos transmitiendo
+    isStreaming = false;
+
     // Cerrar todas las llamadas activas
     activeCalls.forEach(call => call.close());
     activeCalls = [];
