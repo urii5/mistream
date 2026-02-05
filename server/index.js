@@ -25,9 +25,11 @@ let streamState = {
   isLive: false,
   adminPeerId: null,
   adminSocketId: null,
-  viewerCount: 0,
   streamType: null // 'camera', 'screen', 'video'
 };
+
+// Set para controlar viewers únicos por socket ID
+const viewers = new Set();
 
 // Rutas de autenticación
 app.post('/api/login', auth.login);
@@ -39,22 +41,24 @@ app.get('/api/verify', auth.verifyToken, (req, res) => {
 app.get('/api/stream-status', (req, res) => {
   res.json({
     isLive: streamState.isLive,
-    viewerCount: streamState.viewerCount,
+    viewerCount: viewers.size,
     streamType: streamState.streamType
   });
 });
 
 // Socket.IO para signaling y chat
 io.on('connection', (socket) => {
-  console.log('Usuario conectado:', socket.id);
-
   // Admin inicia stream
   socket.on('admin:start-stream', (data) => {
     streamState.isLive = true;
     streamState.adminPeerId = data.peerId;
     streamState.adminSocketId = socket.id;
     streamState.streamType = data.type;
+
+    // Unir admin a su sala
     socket.join('admin');
+
+    // Notificar a todos que empezó el stream
     io.emit('stream:started', {
       peerId: data.peerId,
       type: data.type
@@ -68,15 +72,18 @@ io.on('connection', (socket) => {
     streamState.adminPeerId = null;
     streamState.adminSocketId = null;
     streamState.streamType = null;
+
     io.emit('stream:stopped');
     console.log('Stream detenido');
   });
 
-  // Viewer se une (sin peerId aún)
+  // Viewer se une
   socket.on('viewer:join', () => {
-    streamState.viewerCount++;
-    socket.join('viewers');
-    io.emit('viewer:count', streamState.viewerCount);
+    // Agregar al Set de viewers
+    viewers.add(socket.id);
+
+    // Notificar conteo actualizado
+    io.emit('viewer:count', viewers.size);
 
     // Enviar estado actual al nuevo viewer
     if (streamState.isLive) {
@@ -85,7 +92,7 @@ io.on('connection', (socket) => {
         type: streamState.streamType
       });
     }
-    console.log('Viewer conectado. Total:', streamState.viewerCount);
+    console.log('Viewer conectado. Total:', viewers.size);
   });
 
   // Viewer listo con su peerId - notificar al admin para que lo llame
@@ -94,7 +101,6 @@ io.on('connection', (socket) => {
     if (streamState.isLive && streamState.adminSocketId) {
       // Notificar al admin para que llame a este viewer
       io.to(streamState.adminSocketId).emit('viewer:new', data.peerId);
-      console.log('Notificando al admin sobre nuevo viewer:', data.peerId);
     }
   });
 
@@ -114,11 +120,23 @@ io.on('connection', (socket) => {
 
   // Desconexión
   socket.on('disconnect', () => {
-    if (socket.rooms.has('viewers')) {
-      streamState.viewerCount = Math.max(0, streamState.viewerCount - 1);
-      io.emit('viewer:count', streamState.viewerCount);
+    // Si era viewer, sacarlo del Set y actualizar conteo
+    if (viewers.has(socket.id)) {
+      viewers.delete(socket.id);
+      io.emit('viewer:count', viewers.size);
     }
-    console.log('Usuario desconectado:', socket.id);
+
+    // Si era admin y estaba transmitiendo
+    if (socket.id === streamState.adminSocketId) {
+      console.log('Admin desconectado, deteniendo stream');
+      streamState.isLive = false;
+      streamState.adminPeerId = null;
+      streamState.adminSocketId = null;
+      streamState.streamType = null;
+      io.emit('stream:stopped');
+    }
+
+    console.log('Usuario desconectado:', socket.id, 'Total viewers:', viewers.size);
   });
 });
 
@@ -126,6 +144,4 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🚀 MiStream corriendo en http://localhost:${PORT}`);
-  console.log(`📺 Panel admin: http://localhost:${PORT}/admin.html`);
-  console.log(`👀 Vista viewer: http://localhost:${PORT}/`);
 });

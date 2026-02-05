@@ -239,30 +239,46 @@ function clearActiveButtons() {
 function updateActiveStreams() {
     if (!localStream || activeCalls.length === 0) return;
 
-    console.log('Actualizando stream en', activeCalls.length, 'llamadas activas');
+    console.log('Reiniciando llamadas para', activeCalls.length, 'viewers');
 
-    activeCalls.forEach(call => {
+    // Copiar la lista de llamadas actuales para iterar de forma segura
+    const currentCalls = [...activeCalls];
+
+    // Limpiar array global (se rellenará con las nuevas llamadas)
+    activeCalls = [];
+
+    currentCalls.forEach(oldCall => {
         try {
-            // Obtener los senders de la conexión
-            const senders = call.peerConnection.getSenders();
+            const viewerId = oldCall.peer; // ID del viewer remoto
 
-            // Reemplazar video track
-            const videoTrack = localStream.getVideoTracks()[0];
-            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
-            if (videoSender && videoTrack) {
-                videoSender.replaceTrack(videoTrack);
-                console.log('Video track reemplazado');
+            // Cerrar llamada anterior
+            if (oldCall.open) {
+                oldCall.close();
             }
 
-            // Reemplazar audio track si existe
-            const audioTrack = localStream.getAudioTracks()[0];
-            const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
-            if (audioSender && audioTrack) {
-                audioSender.replaceTrack(audioTrack);
-                console.log('Audio track reemplazado');
+            console.log('Reconectando con viewer:', viewerId);
+
+            // Iniciar nueva llamada con el nuevo stream
+            const newCall = peer.call(viewerId, localStream);
+
+            if (newCall) {
+                // Configurar eventos para la nueva llamada
+                newCall.on('stream', () => {
+                    console.log('Conexión restablecida con viewer:', viewerId);
+                });
+
+                newCall.on('error', (err) => {
+                    console.error('Error en llamada reconectada:', viewerId, err);
+                });
+
+                newCall.on('close', () => {
+                    activeCalls = activeCalls.filter(c => c !== newCall);
+                });
+
+                activeCalls.push(newCall);
             }
         } catch (err) {
-            console.error('Error actualizando stream en llamada:', err);
+            console.error('Error reconectando viewer:', err);
         }
     });
 }
