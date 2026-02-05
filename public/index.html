@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MiStream - TV en Vivo</title>
   <link rel="stylesheet" href="css/styles.css">
 </head>
+
 <body class="viewer-page">
   <div class="container">
     <!-- Header -->
@@ -25,7 +27,7 @@
       <!-- Video Player -->
       <div class="video-section">
         <div class="video-container" id="videoContainer">
-          <video id="remoteVideo" autoplay playsinline></video>
+          <video id="remoteVideo" autoplay playsinline muted></video>
           <div class="offline-screen" id="offlineScreen">
             <div class="offline-content">
               <span class="offline-icon">📡</span>
@@ -51,20 +53,8 @@
           </div>
         </div>
         <form class="chat-input" id="chatForm">
-          <input 
-            type="text" 
-            id="chatUsername" 
-            placeholder="Tu nombre" 
-            maxlength="20"
-            required
-          >
-          <input 
-            type="text" 
-            id="chatMessage" 
-            placeholder="Escribe un mensaje..." 
-            maxlength="200"
-            required
-          >
+          <input type="text" id="chatUsername" placeholder="Tu nombre" maxlength="20" required>
+          <input type="text" id="chatMessage" placeholder="Escribe un mensaje..." maxlength="200" required>
           <button type="submit">Enviar</button>
         </form>
       </aside>
@@ -81,4 +71,5 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="js/viewer.js"></script>
 </body>
+
 </html>
