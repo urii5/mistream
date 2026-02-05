@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MiStream - TV en Vivo</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="viewer-page">
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">📺</span>
+        <h1>MiStream</h1>
+      </div>
+      <div class="live-badge" id="liveBadge">
+        <span class="pulse"></span>
+        <span>EN VIVO</span>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+      <!-- Video Player -->
+      <div class="video-section">
+        <div class="video-container" id="videoContainer">
+          <video id="remoteVideo" autoplay playsinline></video>
+          <div class="offline-screen" id="offlineScreen">
+            <div class="offline-content">
+              <span class="offline-icon">📡</span>
+              <h2>Sin transmisión</h2>
+              <p>Esperando que el administrador inicie el stream...</p>
+            </div>
+          </div>
+        </div>
+        <div class="viewer-count">
+          <span class="viewer-icon">👥</span>
+          <span id="viewerCount">0</span> espectadores
+        </div>
+      </div>
+
+      <!-- Chat Section -->
+      <aside class="chat-section">
+        <div class="chat-header">
+          <h3>💬 Chat en Vivo</h3>
+        </div>
+        <div class="chat-messages" id="chatMessages">
+          <div class="chat-welcome">
+            <p>¡Bienvenido al chat! Sé respetuoso con los demás.</p>
+          </div>
+        </div>
+        <form class="chat-input" id="chatForm">
+          <input 
+            type="text" 
+            id="chatUsername" 
+            placeholder="Tu nombre" 
+            maxlength="20"
+            required
+          >
+          <input 
+            type="text" 
+            id="chatMessage" 
+            placeholder="Escribe un mensaje..." 
+            maxlength="200"
+            required
+          >
+          <button type="submit">Enviar</button>
+        </form>
+      </aside>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>MiStream © 2024 - Plataforma de TV en Vivo</p>
+    </footer>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="js/viewer.js"></script>
+</body>
+</html>

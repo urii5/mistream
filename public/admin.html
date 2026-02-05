@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiStream - Panel Admin</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body class="admin-page">
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="admin-logo">
+                <span class="logo-icon">📺</span>
+                <h2>MiStream</h2>
+                <span class="admin-badge">Admin</span>
+            </div>
+
+            <nav class="admin-nav">
+                <button class="nav-btn active" data-panel="stream">
+                    🎬 Transmisión
+                </button>
+                <button class="nav-btn" data-panel="chat">
+                    💬 Chat
+                </button>
+            </nav>
+
+            <div class="admin-status">
+                <div class="status-item">
+                    <span class="status-label">Estado:</span>
+                    <span class="status-value" id="streamStatus">🔴 Sin transmitir</span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Viewers:</span>
+                    <span class="status-value" id="viewerCount">0</span>
+                </div>
+            </div>
+
+            <button class="btn-logout" id="logoutBtn">
+                🚪 Cerrar Sesión
+            </button>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+            <!-- Stream Panel -->
+            <section class="admin-panel" id="streamPanel">
+                <h2>Control de Transmisión</h2>
+
+                <!-- Preview -->
+                <div class="preview-container">
+                    <video id="localPreview" autoplay muted playsinline></video>
+                    <div class="preview-overlay" id="previewOverlay">
+                        <span>Vista previa</span>
+                    </div>
+                </div>
+
+                <!-- Stream Controls -->
+                <div class="stream-controls">
+                    <div class="control-group">
+                        <h3>📹 Fuente de Video</h3>
+                        <div class="btn-group">
+                            <button class="btn-stream" id="btnCamera">
+                                <span class="btn-icon">📷</span>
+                                <span>Cámara</span>
+                            </button>
+                            <button class="btn-stream" id="btnScreen">
+                                <span class="btn-icon">🖥️</span>
+                                <span>Pantalla</span>
+                            </button>
+                            <button class="btn-stream" id="btnVideo">
+                                <span class="btn-icon">🎞️</span>
+                                <span>Video MP4</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="control-group">
+                        <h3>🎤 Audio</h3>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="toggleMic" checked>
+                            <span class="toggle-slider"></span>
+                            <span class="toggle-label">Micrófono</span>
+                        </label>
+                    </div>
+
+                    <!-- File Input for MP4 -->
+                    <input type="file" id="videoFileInput" accept="video/mp4" style="display: none;">
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="action-buttons">
+                    <button class="btn-primary btn-large" id="btnStartStream" disabled>
+                        ▶️ Iniciar Transmisión
+                    </button>
+                    <button class="btn-danger btn-large" id="btnStopStream" style="display: none;">
+                        ⏹️ Detener Transmisión
+                    </button>
+                </div>
+            </section>
+
+            <!-- Chat Panel -->
+            <section class="admin-panel" id="chatPanel" style="display: none;">
+                <h2>Moderación de Chat</h2>
+                <div class="chat-container admin-chat">
+                    <div class="chat-messages" id="adminChatMessages"></div>
+                    <form class="chat-input" id="adminChatForm">
+                        <input type="text" id="adminChatMessage" placeholder="Enviar mensaje como Admin..."
+                            maxlength="200">
+                        <button type="submit">Enviar</button>
+                    </form>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+
+</html>

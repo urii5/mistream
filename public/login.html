@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MiStream - Login Admin</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-box">
+            <div class="login-header">
+                <span class="logo-icon">📺</span>
+                <h1>MiStream</h1>
+                <p>Panel de Administrador</p>
+            </div>
+
+            <form id="loginForm" class="login-form">
+                <div class="form-group">
+                    <label for="password">Contraseña</label>
+                    <input type="password" id="password" name="password" placeholder="Ingresa la contraseña" required
+                        autofocus>
+                </div>
+                <div class="error-message" id="errorMessage"></div>
+                <button type="submit" class="btn-primary">
+                    <span>Acceder</span>
+                    <span class="loading-spinner" id="loadingSpinner"></span>
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <a href="/">← Volver a la página principal</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Verificar si ya tiene token válido
+        const token = localStorage.getItem('mistream_token');
+        if (token) {
+            fetch('/api/verify', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.valid) {
+                        window.location.href = '/admin.html';
+                    }
+                })
+                .catch(() => localStorage.removeItem('mistream_token'));
+        }
+
+        // Login form
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const password = document.getElementById('password').value;
+            const errorEl = document.getElementById('errorMessage');
+            const spinner = document.getElementById('loadingSpinner');
+            const btn = e.target.querySelector('button');
+
+            btn.disabled = true;
+            spinner.style.display = 'inline-block';
+            errorEl.textContent = '';
+
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.token) {
+                    localStorage.setItem('mistream_token', data.token);
+                    window.location.href = '/admin.html';
+                } else {
+                    errorEl.textContent = data.error || 'Error de autenticación';
+                }
+            } catch (err) {
+                errorEl.textContent = 'Error de conexión';
+            } finally {
+                btn.disabled = false;
+                spinner.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+
+</html>
