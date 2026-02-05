@@ -102,28 +102,26 @@ function notifyReady() {
     }
 }
 
-// Manejar fin de stream
-function handleStreamEnd() {
-    remoteVideo.srcObject = null;
-    offlineScreen.classList.remove('hidden');
-    liveBadge.classList.remove('active');
-    currentCall = null;
-    // No ponemos streamIsLive = false aquí inmediatamente por si es un reinicio de llamada (cambio de fuente)
-    // Pero si el servidor manda 'stream:stopped', ahí sí.
-}
+// Variable para controlar reintentos
+let retryInterval = null;
 
 // Socket Events
 socket.on('connect', () => {
     console.log('Conectado al servidor Socket.IO');
     socket.emit('viewer:join');
-    initPeer();
+    // Solo inicializar peer si no existe
+    if (!peer) {
+        initPeer();
+    }
 });
 
 socket.on('stream:started', (data) => {
     console.log('Stream en vivo detectado:', data);
     streamIsLive = true;
     liveBadge.classList.add('active');
-    notifyReady();
+
+    // Iniciar loop de reintentos hasta recibir llamada
+    startRetryLoop();
 });
 
 socket.on('stream:stopped', () => {
@@ -131,6 +129,39 @@ socket.on('stream:stopped', () => {
     streamIsLive = false;
     handleStreamEnd();
 });
+
+function startRetryLoop() {
+    if (retryInterval) clearInterval(retryInterval);
+
+    // Primer intento
+    notifyReady();
+
+    // Reintentar cada 2 segundos si no llega la llamada
+    retryInterval = setInterval(() => {
+        if (currentCall && currentCall.open) {
+            console.log('Conexión establecida, deteniendo reintentos');
+            clearInterval(retryInterval);
+            retryInterval = null;
+        } else {
+            console.log('Esperando stream... Reintentando handshake.');
+            notifyReady();
+        }
+    }, 2000);
+}
+
+// Manejar fin de stream o cierre
+function handleStreamEnd() {
+    if (retryInterval) {
+        clearInterval(retryInterval);
+        retryInterval = null;
+    }
+
+    remoteVideo.srcObject = null;
+    offlineScreen.classList.remove('hidden');
+    liveBadge.classList.remove('active');
+    currentCall = null;
+}
+
 
 socket.on('viewer:count', (count) => {
     viewerCountEl.textContent = count;

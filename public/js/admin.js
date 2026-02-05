@@ -64,7 +64,14 @@ function initPeer() {
 
     peer.on('error', (err) => {
         console.error('Error PeerJS:', err);
-        alert('Error de conexión: ' + err.message);
+        // Mostrar error sutil en overlay si no es fatal
+        if (previewOverlay) {
+            const msg = document.createElement('div');
+            msg.style.color = '#ef4444';
+            msg.style.marginTop = '10px';
+            msg.textContent = `Error conexión: ${err.type}`;
+            previewOverlay.appendChild(msg);
+        }
     });
 }
 
