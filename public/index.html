@@ -35,10 +35,27 @@
               <p>Esperando que el administrador inicie el stream...</p>
             </div>
           </div>
+          <!-- Overlay para activar audio (política de autoplay) -->
+          <div class="unmute-overlay hidden" id="unmuteOverlay">
+            <button class="unmute-btn" id="unmuteBtn">
+              <span>🔊</span>
+              <span>Click para activar audio</span>
+            </button>
+          </div>
         </div>
-        <div class="viewer-count">
-          <span class="viewer-icon"></span>
-          <span id="viewerCount">0</span> espectadores
+
+        <!-- Controles de video -->
+        <div class="video-controls">
+          <div class="viewer-count">
+            <span class="viewer-icon"></span>
+            <span id="viewerCount">0</span> espectadores
+          </div>
+          <div class="volume-controls">
+            <button class="volume-btn" id="volumeBtn" title="Silenciar/Activar audio">
+              <span id="volumeIcon">🔊</span>
+            </button>
+            <input type="range" id="volumeSlider" min="0" max="100" value="100" class="volume-slider">
+          </div>
         </div>
       </div>
 

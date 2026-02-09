@@ -16,6 +16,13 @@ const chatForm = document.getElementById('chatForm');
 const chatUsername = document.getElementById('chatUsername');
 const chatMessage = document.getElementById('chatMessage');
 
+// Volume controls
+const unmuteOverlay = document.getElementById('unmuteOverlay');
+const unmuteBtn = document.getElementById('unmuteBtn');
+const volumeBtn = document.getElementById('volumeBtn');
+const volumeIcon = document.getElementById('volumeIcon');
+const volumeSlider = document.getElementById('volumeSlider');
+
 // Estado
 let peer = null;
 let currentCall = null;
@@ -58,6 +65,9 @@ function initPeer() {
                     console.log('Reproducción iniciada exitosamente');
                     offlineScreen.classList.add('hidden');
                     liveBadge.classList.add('active');
+
+                    // Mostrar overlay de unmute si es necesario
+                    showUnmuteOverlayIfNeeded();
                 }).catch(err => {
                     console.error('Error al reproducir video (Autoplay Policy?):', err);
 
@@ -230,3 +240,108 @@ const savedUsername = localStorage.getItem('mistream_username');
 if (savedUsername) {
     chatUsername.value = savedUsername;
 }
+
+// =====================================================
+// Volume Controls
+// =====================================================
+
+let isMuted = true; // Empieza muteado por política de autoplay
+
+// Función para actualizar el icono de volumen
+function updateVolumeIcon() {
+    if (remoteVideo.muted || remoteVideo.volume === 0) {
+        volumeIcon.textContent = '🔇';
+    } else if (remoteVideo.volume < 0.5) {
+        volumeIcon.textContent = '🔉';
+    } else {
+        volumeIcon.textContent = '🔊';
+    }
+}
+
+// Click en overlay para activar audio
+unmuteBtn.addEventListener('click', () => {
+    remoteVideo.muted = false;
+    isMuted = false;
+    unmuteOverlay.classList.add('hidden');
+    updateVolumeIcon();
+
+    // Guardar preferencia
+    localStorage.setItem('mistream_audio_enabled', 'true');
+});
+
+// También ocultar overlay al hacer clic en cualquier parte del video
+document.getElementById('videoContainer').addEventListener('click', (e) => {
+    if (e.target === unmuteBtn || unmuteBtn.contains(e.target)) return;
+
+    if (!unmuteOverlay.classList.contains('hidden')) {
+        remoteVideo.muted = false;
+        isMuted = false;
+        unmuteOverlay.classList.add('hidden');
+        updateVolumeIcon();
+    }
+});
+
+// Control de volumen con slider
+volumeSlider.addEventListener('input', () => {
+    const volume = volumeSlider.value / 100;
+    remoteVideo.volume = volume;
+
+    if (volume === 0) {
+        remoteVideo.muted = true;
+        isMuted = true;
+    } else if (isMuted) {
+        remoteVideo.muted = false;
+        isMuted = false;
+        unmuteOverlay.classList.add('hidden');
+    }
+
+    updateVolumeIcon();
+
+    // Guardar volumen
+    localStorage.setItem('mistream_volume', volumeSlider.value);
+});
+
+// Botón de mute/unmute
+volumeBtn.addEventListener('click', () => {
+    if (remoteVideo.muted) {
+        remoteVideo.muted = false;
+        isMuted = false;
+        unmuteOverlay.classList.add('hidden');
+
+        // Si el volumen era 0, ponerlo al 50%
+        if (remoteVideo.volume === 0) {
+            remoteVideo.volume = 0.5;
+            volumeSlider.value = 50;
+        }
+    } else {
+        remoteVideo.muted = true;
+        isMuted = true;
+    }
+
+    updateVolumeIcon();
+});
+
+// Cargar volumen guardado
+const savedVolume = localStorage.getItem('mistream_volume');
+if (savedVolume !== null) {
+    volumeSlider.value = savedVolume;
+    remoteVideo.volume = savedVolume / 100;
+}
+
+// Mostrar overlay de unmute cuando llega el stream
+function showUnmuteOverlayIfNeeded() {
+    const audioEnabled = localStorage.getItem('mistream_audio_enabled');
+
+    if (audioEnabled === 'true') {
+        // El usuario ya había activado audio antes, intentar desmutear
+        remoteVideo.muted = false;
+        isMuted = false;
+        unmuteOverlay.classList.add('hidden');
+    } else {
+        // Mostrar overlay para que el usuario active el audio
+        unmuteOverlay.classList.remove('hidden');
+    }
+
+    updateVolumeIcon();
+}
+

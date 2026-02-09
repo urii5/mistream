@@ -170,59 +170,92 @@ videoFileInput.addEventListener('change', async (e) => {
     const videoEl = document.createElement('video');
     videoEl.src = URL.createObjectURL(file);
     videoEl.loop = true;
-    videoEl.muted = true;
+    // NO poner muted para capturar el audio del video
+    videoEl.muted = false;
+    videoEl.volume = 1;
 
     videoEl.onloadedmetadata = async () => {
-        await videoEl.play();
-
-        // Capturar stream del video
-        const canvas = document.createElement('canvas');
-        canvas.width = videoEl.videoWidth;
-        canvas.height = videoEl.videoHeight;
-        const ctx = canvas.getContext('2d');
-
-        // Dibujar video en canvas
-        function drawFrame() {
-            ctx.drawImage(videoEl, 0, 0);
-            requestAnimationFrame(drawFrame);
-        }
-        drawFrame();
-
-        // Obtener stream del canvas
-        const canvasStream = canvas.captureStream(30);
-
-        // Agregar audio del video si tiene
         try {
-            const audioCtx = new AudioContext();
-            const source = audioCtx.createMediaElementSource(videoEl);
-            const dest = audioCtx.createMediaStreamDestination();
-            source.connect(dest);
-            source.connect(audioCtx.destination);
+            // Necesitamos interacción del usuario para reproducir con audio
+            await videoEl.play();
 
-            const audioTrack = dest.stream.getAudioTracks()[0];
-            if (audioTrack) {
-                canvasStream.addTrack(audioTrack);
+            // Usar captureStream() directamente del video para obtener audio + video
+            let videoStream;
+
+            if (videoEl.captureStream) {
+                videoStream = videoEl.captureStream();
+            } else if (videoEl.mozCaptureStream) {
+                videoStream = videoEl.mozCaptureStream();
+            } else {
+                // Fallback: usar canvas sin audio
+                console.warn('captureStream no soportado, usando canvas (sin audio)');
+                const canvas = document.createElement('canvas');
+                canvas.width = videoEl.videoWidth;
+                canvas.height = videoEl.videoHeight;
+                const ctx = canvas.getContext('2d');
+
+                function drawFrame() {
+                    if (videoEl && !videoEl.paused) {
+                        ctx.drawImage(videoEl, 0, 0);
+                    }
+                    if (currentStreamType === 'video') {
+                        requestAnimationFrame(drawFrame);
+                    }
+                }
+                drawFrame();
+                videoStream = canvas.captureStream(30);
             }
-        } catch (audioErr) {
-            console.warn('No se pudo agregar audio del video:', audioErr);
+
+            // Guardar referencia al video element para controlar reproducción en background
+            window._activeVideoEl = videoEl;
+
+            // Manejar Page Visibility API para evitar pausas en background
+            setupVisibilityHandler(videoEl);
+
+            localStream = videoStream;
+            localPreview.srcObject = videoStream;
+
+            // Silenciar el preview local para evitar eco
+            localPreview.muted = true;
+
+            previewOverlay.classList.add('hidden');
+            currentStreamType = 'video';
+            btnStartStream.disabled = false;
+
+            // Si ya estamos transmitiendo, actualizar el stream en viewers
+            if (isStreaming) {
+                updateActiveStreams();
+            }
+
+            console.log('Video MP4 cargado con audio');
+        } catch (err) {
+            console.error('Error cargando video:', err);
+            alert('Error cargando video. Asegúrate de hacer clic en la página primero (política de autoplay).');
         }
-
-        localStream = canvasStream;
-        localPreview.srcObject = canvasStream;
-        previewOverlay.classList.add('hidden');
-        currentStreamType = 'video';
-        btnStartStream.disabled = false;
-
-        // Si ya estamos transmitiendo, actualizar el stream en viewers
-        if (isStreaming) {
-            updateActiveStreams();
-        }
-
-        console.log('Video MP4 cargado');
     };
 
     videoFileInput.value = '';
 });
+
+// Page Visibility API handler para mantener video reproduciéndose en background
+let visibilityHandler = null;
+function setupVisibilityHandler(videoEl) {
+    // Limpiar handler anterior si existe
+    if (visibilityHandler) {
+        document.removeEventListener('visibilitychange', visibilityHandler);
+    }
+
+    visibilityHandler = () => {
+        if (document.visibilityState === 'hidden') {
+            // La pestaña está en background, asegurar que el video siga reproduciéndose
+            if (videoEl && videoEl.paused && currentStreamType === 'video') {
+                videoEl.play().catch(err => console.warn('No se pudo resumir video:', err));
+            }
+        }
+    };
+
+    document.addEventListener('visibilitychange', visibilityHandler);
+}
 
 // Toggle micrófono
 toggleMic.addEventListener('change', () => {
