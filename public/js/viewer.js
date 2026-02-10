@@ -119,10 +119,15 @@ let retryInterval = null;
 socket.on('connect', () => {
     console.log('Conectado al servidor Socket.IO');
     socket.emit('viewer:join');
-    // Solo inicializar peer si no existe
-    if (!peer) {
-        initPeer();
+
+    // Destruir peer anterior para obtener un ID fresco
+    if (peer) {
+        peer.destroy();
+        peer = null;
+        myPeerId = null;
+        currentCall = null;
     }
+    initPeer();
 });
 
 socket.on('stream:started', (data) => {
@@ -143,18 +148,29 @@ socket.on('stream:stopped', () => {
 function startRetryLoop() {
     if (retryInterval) clearInterval(retryInterval);
 
-    // Primer intento
+    let retryCount = 0;
+    const MAX_RETRIES = 30; // Máximo 30 intentos (60 segundos)
+
+    // Primer intento inmediato
     notifyReady();
 
     // Reintentar cada 2 segundos si no llega la llamada
     retryInterval = setInterval(() => {
+        retryCount++;
+
         if (currentCall && currentCall.open) {
             console.log('Conexión establecida, deteniendo reintentos');
             clearInterval(retryInterval);
             retryInterval = null;
-        } else {
-            console.log('Esperando stream... Reintentando handshake.');
+        } else if (retryCount >= MAX_RETRIES) {
+            console.log('Máximo de reintentos alcanzado');
+            clearInterval(retryInterval);
+            retryInterval = null;
+        } else if (myPeerId) {
+            console.log('Reintentando handshake... intento', retryCount);
             notifyReady();
+        } else {
+            console.log('Esperando PeerJS ID...');
         }
     }, 2000);
 }
@@ -187,6 +203,16 @@ socket.on('chat:deleted', (messageId) => {
     if (msgEl) {
         msgEl.remove();
     }
+});
+
+// Recibir historial de chat al conectar/reconectar
+socket.on('chat:history', (messages) => {
+    // Limpiar mensajes existentes, mantener el welcome
+    const welcome = chatMessages.querySelector('.chat-welcome');
+    chatMessages.innerHTML = '';
+    if (welcome) chatMessages.appendChild(welcome);
+
+    messages.forEach(msg => addChatMessage(msg));
 });
 
 function addChatMessage(data) {

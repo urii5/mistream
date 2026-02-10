@@ -31,6 +31,10 @@ let streamState = {
 // Set para controlar viewers únicos por socket ID
 const viewers = new Set();
 
+// Buffer de historial de chat (últimos 100 mensajes)
+const chatHistory = [];
+const MAX_CHAT_HISTORY = 100;
+
 // Rutas de autenticación
 app.post('/api/login', auth.login);
 app.get('/api/verify', auth.verifyToken, (req, res) => {
@@ -73,6 +77,9 @@ io.on('connection', (socket) => {
     streamState.adminSocketId = null;
     streamState.streamType = null;
 
+    // Limpiar historial de chat al detener stream
+    chatHistory.length = 0;
+
     io.emit('stream:stopped');
     console.log('Stream detenido');
   });
@@ -92,6 +99,12 @@ io.on('connection', (socket) => {
         type: streamState.streamType
       });
     }
+
+    // Enviar historial de chat al nuevo viewer
+    if (chatHistory.length > 0) {
+      socket.emit('chat:history', chatHistory);
+    }
+
     console.log('Viewer conectado. Total:', viewers.size);
   });
 
@@ -106,11 +119,17 @@ io.on('connection', (socket) => {
 
   // Chat
   socket.on('chat:message', (data) => {
-    io.emit('chat:message', {
+    const msg = {
       user: data.user || 'Anónimo',
       message: data.message,
       timestamp: new Date().toISOString()
-    });
+    };
+
+    // Guardar en historial
+    chatHistory.push(msg);
+    if (chatHistory.length > MAX_CHAT_HISTORY) chatHistory.shift();
+
+    io.emit('chat:message', msg);
   });
 
   // Admin modera chat (elimina mensaje)
@@ -133,6 +152,7 @@ io.on('connection', (socket) => {
       streamState.adminPeerId = null;
       streamState.adminSocketId = null;
       streamState.streamType = null;
+      chatHistory.length = 0;
       io.emit('stream:stopped');
     }
 

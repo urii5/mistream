@@ -447,6 +447,12 @@ socket.on('chat:message', (data) => {
     addAdminChatMessage(data);
 });
 
+// Recibir historial de chat al conectar/reconectar
+socket.on('chat:history', (messages) => {
+    adminChatMessages.innerHTML = '';
+    messages.forEach(msg => addAdminChatMessage(msg));
+});
+
 function addAdminChatMessage(data) {
     const messageEl = document.createElement('div');
     messageEl.className = 'chat-message';
