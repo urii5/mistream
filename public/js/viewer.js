@@ -34,7 +34,28 @@ function initPeer() {
     if (peer) return; // Evitar doble inicialización
 
     peer = new Peer({
-        debug: 2
+        debug: 2,
+        config: {
+            iceServers: [
+                { urls: 'stun:stun.l.google.com:19302' },
+                { urls: 'stun:stun1.l.google.com:19302' },
+                {
+                    urls: 'turn:openrelay.metered.ca:80',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                },
+                {
+                    urls: 'turn:openrelay.metered.ca:443',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                },
+                {
+                    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                    username: 'openrelayproject',
+                    credential: 'openrelayproject'
+                }
+            ]
+        }
     });
 
     peer.on('open', (id) => {
@@ -50,6 +71,18 @@ function initPeer() {
     peer.on('call', (call) => {
         console.log('Recibiendo llamada del admin...');
         call.answer(); // Responder sin stream (solo recepción)
+
+        // Log ICE connection state para debugging
+        const pc = call.peerConnection;
+        if (pc) {
+            console.log('ICE connection state:', pc.iceConnectionState);
+            pc.oniceconnectionstatechange = () => {
+                console.log('ICE state changed:', pc.iceConnectionState);
+                if (pc.iceConnectionState === 'failed') {
+                    console.error('ICE connection failed - posible problema de NAT/firewall');
+                }
+            };
+        }
 
         call.on('stream', (remoteStream) => {
             console.log('Stream recibido. Tracks:', remoteStream.getTracks());
